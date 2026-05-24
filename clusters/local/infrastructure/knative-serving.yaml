@@ -4,6 +4,8 @@ metadata:
   name: knative-serving
   namespace: flux-system
 spec:
+  dependsOn:
+    - name: cert-manager
   interval: 10m
   timeout: 10m
   retryInterval: 2m

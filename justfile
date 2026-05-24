@@ -136,9 +136,12 @@ demo-up: up env-github-token
     @just flux-bootstrap
     @echo "==> Triggering reconciliation..."
     @KUBECONFIG=$(pwd)/{{kubeconfig}} flux reconcile kustomization flux-system --with-source
-    @echo "==> Waiting for all kustomizations to be ready (up to 10 min)..."
+    @echo "==> Waiting for cert-manager (up to 5 min)..."
     @KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl wait -n flux-system \
         kustomization/cert-manager \
+        --for=condition=Ready --timeout=300s
+    @echo "==> Waiting for knative-serving, knative-tls, hello-knative (up to 10 min)..."
+    @KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl wait -n flux-system \
         kustomization/knative-serving \
         kustomization/knative-tls \
         kustomization/hello-knative \
