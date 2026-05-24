@@ -68,6 +68,13 @@ env-github-token:
     @gh auth token | xargs -I{} sh -c 'grep -q "^GITHUB_TOKEN=" .env 2>/dev/null && sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN={}/" .env || echo "GITHUB_TOKEN={}" >> .env'
     @echo "GITHUB_TOKEN written to .env"
 
+# Write DUCKDNS_TOKEN into .env  (usage: just env-duckdns-token <your-token>)
+env-duckdns-token token:
+    @grep -q "^DUCKDNS_TOKEN=" .env 2>/dev/null \
+        && sed -i "s/^DUCKDNS_TOKEN=.*/DUCKDNS_TOKEN={{token}}/" .env \
+        || echo "DUCKDNS_TOKEN={{token}}" >> .env
+    @echo "DUCKDNS_TOKEN written to .env"
+
 # ── Flux ────────────────────────────────────────────────────────────────────
 
 # Install flux CLI (if not present)
@@ -104,3 +111,37 @@ flux-reconcile:
 # Tear down Flux controllers (leaves cluster running, removes flux-system namespace)
 flux-uninstall:
     @KUBECONFIG=$(pwd)/{{kubeconfig}} flux uninstall --silent
+
+# ── Demo ────────────────────────────────────────────────────────────────────
+
+# Pre-create duckdns-token secrets in cert-manager and duckdns namespaces (idempotent)
+_duckdns-secrets:
+    @export $(grep -v '^#' .env | xargs) 2>/dev/null; \
+    test -n "${DUCKDNS_TOKEN:-}" || (echo "Error: DUCKDNS_TOKEN not set in .env (run: just env-duckdns-token <token>)"; exit 1); \
+    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace cert-manager --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -; \
+    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create secret generic duckdns-token \
+        --from-literal=token="${DUCKDNS_TOKEN}" -n cert-manager \
+        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -; \
+    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace duckdns --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -; \
+    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create secret generic duckdns-token \
+        --from-literal=token="${DUCKDNS_TOKEN}" -n duckdns \
+        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -
+
+# Set up the hello-knative demo from zero: cluster → secrets → Flux → wait for ready
+# Prerequisites: gh CLI authenticated, DUCKDNS_TOKEN set in .env (or run: just env-duckdns-token <token>)
+demo-up: up env-github-token
+    @echo "==> Creating DuckDNS token secrets..."
+    @just _duckdns-secrets
+    @echo "==> Bootstrapping Flux..."
+    @just flux-bootstrap
+    @echo "==> Triggering reconciliation..."
+    @KUBECONFIG=$(pwd)/{{kubeconfig}} flux reconcile kustomization flux-system --with-source
+    @echo "==> Waiting for all kustomizations to be ready (up to 10 min)..."
+    @KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl wait -n flux-system \
+        kustomization/cert-manager \
+        kustomization/knative-serving \
+        kustomization/knative-tls \
+        kustomization/hello-knative \
+        --for=condition=Ready --timeout=600s
+    @echo ""
+    @echo "Done. App URL: https://hello.default.paulasvb.duckdns.org"
