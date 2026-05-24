@@ -462,6 +462,13 @@ name = "volamar"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "volamar-core",
+]
+
+[[package]]
+name = "volamar-core"
+version = "0.1.0"
+dependencies = [
  "dialoguer",
 ]
 

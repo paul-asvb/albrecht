@@ -1,52 +1,10 @@
-use clap::{Parser, Subcommand};
 use dialoguer::{Input, Select};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-#[derive(Parser)]
-#[command(name = "volamar")]
-#[command(version)]
-#[command(about = "Create and manage Farm frontend projects")]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
+pub const TEMPLATES: &[&str] = &["react", "vue", "svelte", "solid", "preact", "vanilla"];
+pub const PKG_MANAGERS: &[&str] = &["npm", "pnpm", "yarn", "bun"];
 
-    /// Project name (directory to create)
-    name: Option<String>,
-
-    /// Framework template: react, vue, svelte, solid, preact, vanilla
-    #[arg(short, long)]
-    template: Option<String>,
-
-    /// Package manager to use: npm, pnpm, yarn, bun
-    #[arg(short, long)]
-    pm: Option<String>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Start the Farm dev server for all Farm apps found under DIR
-    Dev {
-        /// Root directory to search for Farm apps
-        #[arg(default_value = ".")]
-        dir: String,
-    },
-    /// Build the Farm project
-    Build {
-        /// Project directory
-        #[arg(default_value = ".")]
-        dir: String,
-    },
-    /// Preview the built project
-    Preview {
-        /// Project directory
-        #[arg(default_value = ".")]
-        dir: String,
-    },
-}
-
-const TEMPLATES: &[&str] = &["react", "vue", "svelte", "solid", "preact", "vanilla"];
-const PKG_MANAGERS: &[&str] = &["npm", "pnpm", "yarn", "bun"];
 const SKIP_DIRS: &[&str] = &[
     "node_modules",
     "target",
@@ -57,18 +15,7 @@ const SKIP_DIRS: &[&str] = &[
     ".cache",
 ];
 
-fn main() {
-    let cli = Cli::parse();
-
-    match cli.command {
-        Some(Commands::Dev { dir }) => run_dev_all(&dir),
-        Some(Commands::Build { dir }) => run_script("build", &dir),
-        Some(Commands::Preview { dir }) => run_script("preview", &dir),
-        None => create_project(cli.name, cli.template, cli.pm),
-    }
-}
-
-fn run_dev_all(dir: &str) {
+pub fn run_dev_all(dir: &str) {
     let root = Path::new(dir);
     let apps = find_farm_apps(root);
 
@@ -85,10 +32,7 @@ fn run_dev_all(dir: &str) {
         let pm = match detect_pm(app_dir) {
             Some(pm) => pm,
             None => {
-                eprintln!(
-                    "  {} [skipped — no lock file found]",
-                    app_dir.display()
-                );
+                eprintln!("  {} [skipped — no lock file found]", app_dir.display());
                 continue;
             }
         };
@@ -112,7 +56,7 @@ fn run_dev_all(dir: &str) {
     }
 }
 
-fn find_farm_apps(root: &Path) -> Vec<PathBuf> {
+pub fn find_farm_apps(root: &Path) -> Vec<PathBuf> {
     let mut apps = Vec::new();
     collect_farm_apps(root, &mut apps, 0);
     apps
@@ -150,7 +94,7 @@ fn collect_farm_apps(dir: &Path, apps: &mut Vec<PathBuf>, depth: u32) {
     }
 }
 
-fn run_script(script: &str, dir: &str) {
+pub fn run_script(script: &str, dir: &str) {
     let path = Path::new(dir);
     let pm = detect_pm(path).unwrap_or_else(|| {
         eprintln!("Could not detect package manager in '{}'.", dir);
@@ -171,7 +115,7 @@ fn run_script(script: &str, dir: &str) {
     }
 }
 
-fn detect_pm(dir: &Path) -> Option<&'static str> {
+pub fn detect_pm(dir: &Path) -> Option<&'static str> {
     if dir.join("pnpm-lock.yaml").exists() {
         Some("pnpm")
     } else if dir.join("bun.lockb").exists() {
@@ -185,7 +129,7 @@ fn detect_pm(dir: &Path) -> Option<&'static str> {
     }
 }
 
-fn create_project(name: Option<String>, template: Option<String>, pm: Option<String>) {
+pub fn create_project(name: Option<String>, template: Option<String>, pm: Option<String>) {
     let name: String = name.unwrap_or_else(|| {
         Input::new()
             .with_prompt("Project name")

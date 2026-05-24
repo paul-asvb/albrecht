@@ -1,0 +1,12 @@
+[package]
+name = "volamar"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "volamar"
+path = "src/main.rs"
+
+[dependencies]
+volamar-core = { path = "../volamar-core" }
+clap = { version = "4", features = ["derive"] }
