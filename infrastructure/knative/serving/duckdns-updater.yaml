@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: duckdns
+---
+# Secret 'duckdns-token' must be created manually on the cluster:
+# kubectl create secret generic duckdns-token -n duckdns \
+#   --from-literal=token=<YOUR_DUCKDNS_TOKEN>
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: duckdns-updater
+  namespace: duckdns
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: updater
+              image: curlimages/curl:8.10.1
+              command:
+                - sh
+                - -c
+                - |
+                  TOKEN=$(cat /etc/duckdns/token)
+                  RESP=$(curl -s "https://www.duckdns.org/update?domains=paulasvb&token=${TOKEN}&ip=")
+                  echo "DuckDNS response: ${RESP}"
+                  [ "${RESP}" = "OK" ] || exit 1
+              volumeMounts:
+                - name: duckdns-token
+                  mountPath: /etc/duckdns
+                  readOnly: true
+          volumes:
+            - name: duckdns-token
+              secret:
+                secretName: duckdns-token
