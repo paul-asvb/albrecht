@@ -10,10 +10,9 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: cert-manager-webhook-duckdns
-      version: ">=1.0.0"
+      chart: ./deploy/cert-manager-webhook-duckdns
       sourceRef:
-        kind: HelmRepository
+        kind: GitRepository
         name: cert-manager-webhook-duckdns
         namespace: flux-system
   values:
@@ -22,4 +21,5 @@ spec:
       namespace: cert-manager
       serviceAccountName: cert-manager
     secret:
+      existingSecret: true
       existingSecretName: duckdns-token

@@ -1,8 +1,10 @@
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: GitRepository
 metadata:
   name: cert-manager-webhook-duckdns
   namespace: flux-system
 spec:
   interval: 1h
-  url: https://charts.ebrianne.dev
+  ref:
+    tag: v1.2.2
+  url: https://github.com/ebrianne/cert-manager-webhook-duckdns
