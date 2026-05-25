@@ -118,14 +118,14 @@ flux-uninstall:
 _duckdns-secrets:
     @export $(grep -v '^#' .env | xargs) 2>/dev/null; \
     test -n "${DUCKDNS_TOKEN:-}" || (echo "Error: DUCKDNS_TOKEN not set in .env (run: just env-duckdns-token <token>)"; exit 1); \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace cert-manager --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -; \
+    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace cert-manager --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -; \
     KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create secret generic duckdns-token \
         --from-literal=token="${DUCKDNS_TOKEN}" -n cert-manager \
-        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -; \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace duckdns --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -; \
+        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -; \
+    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace duckdns --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -; \
     KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create secret generic duckdns-token \
         --from-literal=token="${DUCKDNS_TOKEN}" -n duckdns \
-        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply -f -
+        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -
 
 # Set up the hello-knative demo from zero: cluster → secrets → Flux → wait for ready
 # Prerequisites: gh CLI authenticated, DUCKDNS_TOKEN set in .env (or run: just env-duckdns-token <token>)
