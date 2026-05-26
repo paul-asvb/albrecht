@@ -1,32 +1,6 @@
 # volamar
 
-A Rust CLI for scaffolding and managing [Farm](https://www.farmfe.org/) frontend projects, plus a local Kubernetes cluster setup with Knative Serving and automated HTTPS via cert-manager and DuckDNS.
-
-## CLI
-
-```sh
-cargo install --path crates/volamar
-```
-
-### Usage
-
-```
-# Interactive project creation
-volamar
-
-# Non-interactive
-volamar my-app --template react --pm pnpm
-
-# Start Farm dev server for all Farm apps found under a directory
-volamar dev [dir]
-
-# Build / preview
-volamar build [dir]
-volamar preview [dir]
-```
-
-Supported templates: `react`, `vue`, `svelte`, `solid`, `preact`, `vanilla`  
-Supported package managers: `npm`, `pnpm`, `yarn`, `bun`
+A local Kubernetes cluster setup with Knative Serving and automated HTTPS via cert-manager and DuckDNS.
 
 ## Local cluster
 
@@ -63,9 +37,6 @@ just down                 # stop and reset the cluster
 ## Repository layout
 
 ```
-crates/
-  volamar/          ← CLI binary
-  volamar-core/     ← library (project creation, dev server discovery)
 apps/
   hello-knative/    ← sample Knative Service deployed via Flux
 clusters/
