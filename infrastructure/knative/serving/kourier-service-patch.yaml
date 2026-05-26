@@ -6,4 +6,4 @@ metadata:
 spec:
   type: NodePort
   externalIPs:
-    - 192.168.1.76
+    - 192.168.1.249
