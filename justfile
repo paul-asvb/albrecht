@@ -32,11 +32,11 @@ up: install-k0s
     fi
     @just kubeconfig
 
-# Export kubeconfig for kubectl
-kubeconfig:
-    @sudo k0s kubeconfig admin | tee {{kubeconfig}} > /dev/null
-    @echo "Kubeconfig written to {{kubeconfig}}"
-    @echo "Run: export KUBECONFIG=$(pwd)/{{kubeconfig}}"
+
+# Write k0s kubeconfig to /tmp/volmar.yaml and verify cluster connection
+connect:
+    @sudo k0s kubeconfig admin | tee /tmp/volmar.yaml > /dev/null
+    @KUBECONFIG=/tmp/volmar.yaml kubectl get nodes
 
 # Show cluster status
 status:
