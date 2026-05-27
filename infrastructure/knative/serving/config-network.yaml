@@ -5,8 +5,6 @@ metadata:
   namespace: knative-serving
 data:
   ingress-class: kourier.ingress.networking.knative.dev
-  # Drop namespace from service URL so wildcard *.paulasvb.duckdns.org covers all services
-  domain-template: "{{.Name}}.{{.Domain}}"
   external-domain-tls: "Enabled"
   # Issue one wildcard cert per namespace instead of per-service certs
   namespace-wildcard-cert-selector: |
