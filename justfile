@@ -19,7 +19,7 @@ install-k0s:
     fi
 
 # Start the k0s cluster (single-node controller+worker)
-up: install-k0s
+connect: install-k0s
     @if sudo k0s status &>/dev/null 2>&1; then \
         echo "k0s is already running"; \
     else \
@@ -30,13 +30,18 @@ up: install-k0s
         sudo k0s kubectl wait --for=condition=Ready node --all --timeout=120s; \
         echo "Cluster is ready."; \
     fi
-    @just kubeconfig
+    @just kubeconfig 
 
 
 # Write k0s kubeconfig to /tmp/volmar.yaml and verify cluster connection
-connect:
+kubeconfig:
     @sudo k0s kubeconfig admin | tee /tmp/volmar.yaml > /dev/null
     @KUBECONFIG=/tmp/volmar.yaml kubectl get nodes
+
+# Print export statement for KUBECONFIG — load into shell with: eval $(just kube-env)
+kube-env:
+    @sudo k0s kubeconfig admin > /tmp/volmar.yaml 2>/dev/null
+    @echo "export KUBECONFIG=/tmp/volmar.yaml"
 
 # Show cluster status
 status:
@@ -61,8 +66,6 @@ down:
     @rm -f {{kubeconfig}}
     @echo "Cluster stopped and reset."
 
-# Restart the cluster
-restart: down up
 
 # Open a shell with KUBECONFIG set
 shell:
@@ -121,24 +124,9 @@ flux-reconcile:
 flux-uninstall:
     @KUBECONFIG=$(pwd)/{{kubeconfig}} flux uninstall --silent
 
-# ── Demo ────────────────────────────────────────────────────────────────────
-
-# Pre-create duckdns-token secrets in cert-manager and duckdns namespaces (idempotent)
-_duckdns-secrets:
-    @export $(grep -v '^#' .env | xargs) 2>/dev/null; \
-    test -n "${DUCKDNS_TOKEN:-}" || (echo "Error: DUCKDNS_TOKEN not set in .env (run: just env-duckdns-token <token>)"; exit 1); \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace cert-manager --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -; \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create secret generic duckdns-token \
-        --from-literal=token="${DUCKDNS_TOKEN}" -n cert-manager \
-        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -; \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create namespace duckdns --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -; \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl create secret generic duckdns-token \
-        --from-literal=token="${DUCKDNS_TOKEN}" -n duckdns \
-        --dry-run=client -o yaml | KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl apply --validate=false -f -
-
 # Set up the hello-knative demo from zero: cluster → secrets → Flux → wait for ready
 # Prerequisites: gh CLI authenticated, DUCKDNS_TOKEN set in .env (or run: just env-duckdns-token <token>)
-demo-up: up env-github-token
+bootstrap: env-github-token
     @echo "==> Creating DuckDNS token secrets..."
     @just _duckdns-secrets
     @echo "==> Bootstrapping Flux..."
