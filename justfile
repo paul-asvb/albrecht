@@ -1,5 +1,5 @@
 k0s_config  := "k0s.yaml"
-kubeconfig  := "kubeconfig.yaml"
+kubeconfig  := "/tmp/volmar.yaml"
 flux_owner  := "paul-asvb"
 flux_repo   := "rust-js-test"
 flux_branch := "main"
@@ -69,7 +69,7 @@ down:
 
 # Open a shell with KUBECONFIG set
 shell:
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} $SHELL
+    @KUBECONFIG={{kubeconfig}} $SHELL
 
 # Apply a manifest (usage: just apply <file>)
 apply file:
@@ -79,15 +79,6 @@ apply file:
 env-github-token:
     @gh auth token | xargs -I{} sh -c 'grep -q "^GITHUB_TOKEN=" .env 2>/dev/null && sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN={}/" .env || echo "GITHUB_TOKEN={}" >> .env'
     @echo "GITHUB_TOKEN written to .env"
-
-# Write DUCKDNS_TOKEN into .env  (usage: just env-duckdns-token <your-token>)
-env-duckdns-token token:
-    @grep -q "^DUCKDNS_TOKEN=" .env 2>/dev/null \
-        && sed -i "s/^DUCKDNS_TOKEN=.*/DUCKDNS_TOKEN={{token}}/" .env \
-        || echo "DUCKDNS_TOKEN={{token}}" >> .env
-    @echo "DUCKDNS_TOKEN written to .env"
-
-# ── Flux ────────────────────────────────────────────────────────────────────
 
 # Install flux CLI (if not present)
 install-flux:
@@ -103,7 +94,7 @@ flux-bootstrap: install-flux
     @export $(grep -v '^#' .env | xargs) 2>/dev/null; \
     test -n "${GITHUB_TOKEN:-}" || (echo "Error: GITHUB_TOKEN is not set (run: just env-github-token)"; exit 1)
     @export $(grep -v '^#' .env | xargs) 2>/dev/null; \
-    KUBECONFIG=$(pwd)/{{kubeconfig}} flux bootstrap github \
+    KUBECONFIG={{kubeconfig}} flux bootstrap github \
         --owner={{flux_owner}} \
         --repository={{flux_repo}} \
         --branch={{flux_branch}} \
@@ -113,16 +104,16 @@ flux-bootstrap: install-flux
 
 # Check Flux component and reconciliation status
 flux-status:
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} flux get all --all-namespaces
+    @KUBECONFIG={{kubeconfig}} flux get all --all-namespaces
 
 # Force an immediate reconciliation cycle
 flux-reconcile:
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} flux reconcile source git flux-system
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} flux reconcile kustomization flux-system
+    @KUBECONFIG={{kubeconfig}} flux reconcile source git flux-system
+    @KUBECONFIG={{kubeconfig}} flux reconcile kustomization flux-system
 
 # Tear down Flux controllers (leaves cluster running, removes flux-system namespace)
 flux-uninstall:
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} flux uninstall --silent
+    @KUBECONFIG={{kubeconfig}} flux uninstall --silent
 
 # Set up the hello-knative demo from zero: cluster → secrets → Flux → wait for ready
 # Prerequisites: gh CLI authenticated, DUCKDNS_TOKEN set in .env (or run: just env-duckdns-token <token>)
@@ -132,13 +123,13 @@ bootstrap: env-github-token
     @echo "==> Bootstrapping Flux..."
     @just flux-bootstrap
     @echo "==> Triggering reconciliation..."
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} flux reconcile kustomization flux-system --with-source
+    @KUBECONFIG={{kubeconfig}} flux reconcile kustomization flux-system --with-source
     @echo "==> Waiting for cert-manager (up to 5 min)..."
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl wait -n flux-system \
+    @KUBECONFIG={{kubeconfig}} kubectl wait -n flux-system \
         kustomization/cert-manager \
         --for=condition=Ready --timeout=300s
     @echo "==> Waiting for knative-serving, knative-tls, hello-knative (up to 10 min)..."
-    @KUBECONFIG=$(pwd)/{{kubeconfig}} kubectl wait -n flux-system \
+    @KUBECONFIG={{kubeconfig}} kubectl wait -n flux-system \
         kustomization/knative-serving \
         kustomization/knative-tls \
         kustomization/hello-knative \
