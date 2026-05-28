@@ -3,7 +3,6 @@ kind: Kustomization
 resources:
   - serving-core.yaml
   - kourier.yaml
-  - duckdns-updater.yaml
 patches:
   - path: config-domain.yaml
     target:

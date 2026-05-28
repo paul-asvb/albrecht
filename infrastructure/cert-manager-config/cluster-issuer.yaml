@@ -1,19 +1,31 @@
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: letsencrypt-duckdns
+  name: selfsigned-bootstrapper
 spec:
-  acme:
-    email: paul@paul-mayer.eu
-    server: https://acme-v02.api.letsencrypt.org/directory
-    privateKeySecretRef:
-      name: letsencrypt-duckdns-key
-    solvers:
-      - dns01:
-          webhook:
-            groupName: acme.duckdns.org
-            solverName: duckdns
-            config:
-              apiTokenSecretRef:
-                key: token
-                name: duckdns-token
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sslip-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: sslip-ca
+  secretName: sslip-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-bootstrapper
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: sslip-ca-issuer
+spec:
+  ca:
+    secretName: sslip-ca-secret

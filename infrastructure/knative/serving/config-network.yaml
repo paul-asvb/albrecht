@@ -6,7 +6,6 @@ metadata:
 data:
   ingress-class: kourier.ingress.networking.knative.dev
   external-domain-tls: "Enabled"
-  # Issue one wildcard cert per namespace instead of per-service certs
   namespace-wildcard-cert-selector: |
     matchExpressions:
     - key: kubernetes.io/metadata.name

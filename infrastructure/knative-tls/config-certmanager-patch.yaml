@@ -6,4 +6,4 @@ metadata:
 data:
   issuerRef: |
     kind: ClusterIssuer
-    name: letsencrypt-duckdns
+    name: sslip-ca-issuer

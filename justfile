@@ -115,11 +115,9 @@ flux-reconcile:
 flux-uninstall:
     @KUBECONFIG={{kubeconfig}} flux uninstall --silent
 
-# Set up the hello-knative demo from zero: cluster → secrets → Flux → wait for ready
-# Prerequisites: gh CLI authenticated, DUCKDNS_TOKEN set in .env (or run: just env-duckdns-token <token>)
+# Set up the hello-knative demo from zero: cluster → Flux → wait for ready
+# Prerequisites: gh CLI authenticated
 bootstrap: env-github-token
-    @echo "==> Creating DuckDNS token secrets..."
-    @just _duckdns-secrets
     @echo "==> Bootstrapping Flux..."
     @just flux-bootstrap
     @echo "==> Triggering reconciliation..."
@@ -128,11 +126,10 @@ bootstrap: env-github-token
     @KUBECONFIG={{kubeconfig}} kubectl wait -n flux-system \
         kustomization/cert-manager \
         --for=condition=Ready --timeout=300s
-    @echo "==> Waiting for knative-serving, knative-tls, hello-knative (up to 10 min)..."
+    @echo "==> Waiting for knative-serving and knative-tls (up to 10 min)..."
     @KUBECONFIG={{kubeconfig}} kubectl wait -n flux-system \
         kustomization/knative-serving \
         kustomization/knative-tls \
-        kustomization/hello-knative \
         --for=condition=Ready --timeout=600s
     @echo ""
-    @echo "Done. App URL: https://hello.default.paulasvb.duckdns.org"
+    @echo "Done. Services will be available at https://<name>.default.192.168.1.249.sslip.io"
