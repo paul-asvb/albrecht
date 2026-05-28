@@ -44,6 +44,15 @@ status:
     @echo ""
     @KUBECONFIG={{kubeconfig}} kubectl get nodes 2>/dev/null || true
 
+# Start the k0s service (installs service unit if needed)
+start:
+    @sudo k0s install controller --single 2>/dev/null || true
+    @sudo k0s start
+
+# Stop the k0s service (keeps cluster state)
+stop:
+    @sudo k0s stop
+
 # Stop the k0s cluster
 down:
     @echo "Stopping k0s cluster..."
