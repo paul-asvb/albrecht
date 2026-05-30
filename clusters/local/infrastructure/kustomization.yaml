@@ -6,4 +6,5 @@ resources:
   - cert-manager-config.yaml
   - knative-tls.yaml
   - crossplane.yaml
+  - crossplane-providers.yaml
   - crossplane-config.yaml

@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   dependsOn:
-    - name: crossplane
+    - name: crossplane-providers
   interval: 10m
   timeout: 10m
   retryInterval: 2m
