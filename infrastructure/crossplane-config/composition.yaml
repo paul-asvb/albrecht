@@ -1,0 +1,37 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: customer-namespace
+  labels:
+    crossplane.io/xrd: xcustomernamespaces.volamar.io
+spec:
+  compositeTypeRef:
+    apiVersion: volamar.io/v1alpha1
+    kind: XCustomerNamespace
+  resources:
+    - name: namespace
+      base:
+        apiVersion: kubernetes.crossplane.io/v1alpha2
+        kind: Object
+        spec:
+          forProvider:
+            manifest:
+              apiVersion: v1
+              kind: Namespace
+              metadata:
+                name: placeholder
+                labels:
+                  volamar.io/managed-by: crossplane
+                  volamar.io/customer: placeholder
+          providerConfigRef:
+            name: in-cluster
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.customer
+          toFieldPath: spec.forProvider.manifest.metadata.name
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.customer
+          toFieldPath: spec.forProvider.manifest.metadata.labels["volamar.io/customer"]
+        - type: ToCompositeFieldPath
+          fromFieldPath: spec.forProvider.manifest.metadata.name
+          toFieldPath: status.namespace
