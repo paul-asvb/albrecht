@@ -25,10 +25,29 @@ spec:
         ExternalSecure: true
         TLS:
           Enabled: false
+        Database:
+          Postgres:
+            Host: postgresql
+            Port: 5432
+            Database: zitadel
+            MaxOpenConns: 20
+            MaxIdleConns: 10
+            ConnMaxLifetime: "30m"
+            User:
+              Username: zitadel
+              SSL:
+                Mode: disable
+            Admin:
+              Username: postgres
+              SSL:
+                Mode: disable
+      secretConfig:
+        Database:
+          Postgres:
+            User:
+              Password: "zitadel123"
+            Admin:
+              Password: "postgres123"
     postgresql:
-      enabled: true
+      enabled: false
     replicaCount: 1
-    service:
-      type: ClusterIP
-      port: 8080
-      protocol: http

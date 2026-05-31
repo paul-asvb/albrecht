@@ -8,4 +8,5 @@ resources:
   - crossplane.yaml
   - crossplane-providers.yaml
   - crossplane-config.yaml
+  - postgresql.yaml
   - zitadel.yaml
