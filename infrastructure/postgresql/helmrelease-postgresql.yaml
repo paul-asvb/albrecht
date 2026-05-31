@@ -16,6 +16,11 @@ spec:
   targetNamespace: zitadel
   install:
     createNamespace: true
+  upgrade:
+    remediation:
+      retries: 1
+      remediateLastFailure: true
+      strategy: uninstall
   values:
     auth:
       database: zitadel
