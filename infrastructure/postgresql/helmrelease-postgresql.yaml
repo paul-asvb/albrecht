@@ -17,8 +17,9 @@ spec:
   install:
     createNamespace: true
   upgrade:
+    force: true
     remediation:
-      retries: 1
+      retries: 0
       remediateLastFailure: true
       strategy: uninstall
   values:
