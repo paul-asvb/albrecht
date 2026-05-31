@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zitadel-postgresql-hl
+  namespace: zitadel
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: zitadel
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+  namespace: zitadel
+spec:
+  selector:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/instance: zitadel
+  ports:
+    - port: 5432
+      targetPort: 5432
