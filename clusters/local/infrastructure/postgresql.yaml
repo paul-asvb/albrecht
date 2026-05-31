@@ -17,5 +17,5 @@ spec:
   healthChecks:
     - apiVersion: apps/v1
       kind: StatefulSet
-      name: postgresql
+      name: zitadel-postgresql
       namespace: zitadel
