@@ -16,6 +16,8 @@ spec:
   targetNamespace: zitadel
   install:
     createNamespace: false
+    remediation:
+      retries: 3
   values:
     zitadel:
       masterkey: "MasterkeyNeedsToHave32Characters"
@@ -27,7 +29,7 @@ spec:
           Enabled: false
         Database:
           Postgres:
-            Host: postgresql
+            Host: zitadel-postgresql
             Port: 5432
             Database: zitadel
             MaxOpenConns: 20
