@@ -3,8 +3,12 @@ kind: Ingress
 metadata:
   name: zitadel
   namespace: zitadel
+  labels:
+    serving.knative.dev/route: zitadel
+    serving.knative.dev/routeNamespace: zitadel
+    serving.knative.dev/service: zitadel
   annotations:
-    networking.knative.dev/ingress-class: kourier.ingress.networking.knative.dev
+    networking.knative.dev/ingress.class: kourier.ingress.networking.knative.dev
 spec:
   rules:
     - hosts:
@@ -17,6 +21,7 @@ spec:
                 serviceNamespace: zitadel
                 servicePort: 8080
                 percent: 100
+  httpOption: Enabled
   tls:
     - hosts:
         - auth.192.168.1.249.sslip.io
