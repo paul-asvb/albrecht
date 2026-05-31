@@ -24,5 +24,4 @@ spec:
       postgresPassword: "postgres123"
     primary:
       persistence:
-        enabled: true
-        size: 1Gi
+        enabled: false
