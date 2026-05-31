@@ -1,0 +1,24 @@
+apiVersion: networking.internal.knative.dev/v1alpha1
+kind: Ingress
+metadata:
+  name: zitadel
+  namespace: zitadel
+  annotations:
+    networking.knative.dev/ingress-class: kourier.ingress.networking.knative.dev
+spec:
+  rules:
+    - hosts:
+        - auth.192.168.1.249.sslip.io
+      visibility: ExternalIP
+      http:
+        paths:
+          - splits:
+              - serviceName: zitadel
+                serviceNamespace: zitadel
+                servicePort: 8080
+                percent: 100
+  tls:
+    - hosts:
+        - auth.192.168.1.249.sslip.io
+      secretName: zitadel-tls-secret
+      secretNamespace: zitadel
