@@ -1,21 +1,19 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: postgresql
+  name: local-path-provisioner
   namespace: flux-system
 spec:
   interval: 10m
-  timeout: 10m
+  timeout: 5m
   retryInterval: 2m
-  dependsOn:
-    - name: local-path-provisioner
-  path: ./infrastructure/postgresql
+  path: ./infrastructure/local-path-provisioner
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
   healthChecks:
     - apiVersion: apps/v1
-      kind: StatefulSet
-      name: postgresql
-      namespace: zitadel
+      kind: Deployment
+      name: local-path-provisioner
+      namespace: local-path-provisioner
