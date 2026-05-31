@@ -13,7 +13,7 @@ spec:
       http:
         paths:
           - splits:
-              - serviceName: zitadel
+              - serviceName: zitadel-zitadel
                 serviceNamespace: zitadel
                 servicePort: 8080
                 percent: 100
