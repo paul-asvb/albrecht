@@ -18,6 +18,12 @@ spec:
     createNamespace: false
     remediation:
       retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 0
+      remediateLastFailure: true
+      strategy: uninstall
   values:
     zitadel:
       masterkey: "MasterkeyNeedsToHave32Characters"
