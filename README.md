@@ -5,6 +5,10 @@ cert-manager (self-signed CA), and Crossplane-managed customer namespaces.
 
 ## Local cluster
 
+```bash
+eval $(just kube-env)
+```
+
 A single-node [k0s](https://k0sproject.io/) cluster managed by
 [Flux CD](https://fluxcd.io/), running Knative Serving with automatic HTTPS for
 `*.<node-ip>.sslip.io` hostnames.
