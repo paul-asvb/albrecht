@@ -1,9 +1,0 @@
-# Example: provision a namespace for customer "acme".
-# Copy and adapt for each real customer — do not deploy this example directly.
-apiVersion: volamar.io/v1alpha1
-kind: CustomerNamespace
-metadata:
-  name: acme
-  namespace: default
-spec:
-  customer: acme
