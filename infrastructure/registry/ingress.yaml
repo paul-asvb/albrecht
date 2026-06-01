@@ -1,0 +1,29 @@
+apiVersion: networking.internal.knative.dev/v1alpha1
+kind: Ingress
+metadata:
+  name: registry
+  namespace: registry
+  labels:
+    serving.knative.dev/route: registry
+    serving.knative.dev/routeNamespace: registry
+    serving.knative.dev/service: registry
+  annotations:
+    networking.knative.dev/ingress.class: kourier.ingress.networking.knative.dev
+spec:
+  rules:
+    - hosts:
+        - registry.192.168.1.249.sslip.io
+      visibility: ExternalIP
+      http:
+        paths:
+          - splits:
+              - serviceName: registry
+                serviceNamespace: registry
+                servicePort: 5080
+                percent: 100
+  httpOption: Enabled
+  tls:
+    - hosts:
+        - registry.192.168.1.249.sslip.io
+      secretName: registry-tls-secret
+      secretNamespace: registry
