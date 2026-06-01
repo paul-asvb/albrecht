@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-        - image: registry.192.168.1.249.sslip.io/walter:latest
+        - image: ghcr.io/paul-asvb/walter:latest
           ports:
             - containerPort: 8080
           env:
