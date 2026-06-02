@@ -1,11 +1,11 @@
-name: core
+name: plattform
 
 on:
   push:
     branches: [main]
     paths:
-      - apps/core/**
-      - .github/workflows/core.yaml
+      - apps/plattform/**
+      - .github/workflows/plattform.yaml
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
@@ -38,7 +38,7 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: apps/core
+          context: apps/plattform
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

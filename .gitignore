@@ -1,4 +1,4 @@
 /target
-apps/core/target
+apps/plattform/target
 .env
 kubeconfig.yaml
