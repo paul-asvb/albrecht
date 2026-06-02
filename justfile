@@ -1,7 +1,7 @@
 k0s_config  := "k0s.yaml"
 kubeconfig  := "/tmp/volmar.yaml"
 flux_owner  := "paul-asvb"
-flux_repo   := "rust-js-test"
+flux_repo   := "albrecht"
 flux_branch := "main"
 flux_path   := "clusters/local"
 
