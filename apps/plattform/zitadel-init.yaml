@@ -53,8 +53,8 @@ data:
     SESSION=""
     SESSION_ID=""
     for LOGIN in \
-      "zitadel-admin@zitadel.auth.192.168.1.249.sslip.io" \
-      "zitadel-admin@auth.192.168.1.249.sslip.io"; do
+      "zitadel-admin@auth.192.168.1.249.sslip.io" \
+      "zitadel-admin@zitadel.auth.192.168.1.249.sslip.io"; do
       SESSION=$(curl -sk -X POST "$ZURL/v2/sessions" \
         -H "Content-Type: application/json" \
         -d "{\"checks\":{\"user\":{\"loginName\":\"$LOGIN\"},\"password\":{\"password\":\"$ZITADEL_ADMIN_PASSWORD\"}}}")
@@ -165,7 +165,7 @@ spec:
   template:
     spec:
       serviceAccountName: zitadel-init
-      restartPolicy: OnFailure
+      restartPolicy: Never
       containers:
         - name: init
           image: alpine/k8s:1.30.4
