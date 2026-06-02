@@ -1,3 +1,4 @@
 /target
+apps/walter/target
 .env
 kubeconfig.yaml
