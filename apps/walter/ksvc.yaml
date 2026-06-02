@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-        - image: ghcr.io/paul-asvb/walter:latest
+        - image: ghcr.io/paul-asvb/albrecht:latest
           ports:
             - containerPort: 8080
           env:
