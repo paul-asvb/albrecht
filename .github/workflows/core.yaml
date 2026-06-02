@@ -1,11 +1,11 @@
-name: walter
+name: core
 
 on:
   push:
     branches: [main]
     paths:
-      - apps/walter/**
-      - .github/workflows/walter.yaml
+      - apps/core/**
+      - .github/workflows/core.yaml
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
@@ -38,7 +38,7 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: apps/walter
+          context: apps/core
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
