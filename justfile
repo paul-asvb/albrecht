@@ -56,12 +56,12 @@ start:
 
 # Stop the k0s service (keeps cluster state)
 stop:
-    @sudo k0s stop
+    @if sudo k0s status &>/dev/null; then sudo k0s stop; else echo "k0s is not running"; fi
 
 # Stop the k0s cluster
 down:
     @echo "Stopping k0s cluster..."
-    @sudo k0s stop
+    @if sudo k0s status &>/dev/null; then sudo k0s stop; fi
     @sudo k0s reset
     @rm -f {{kubeconfig}}
     @echo "Cluster stopped and reset."
