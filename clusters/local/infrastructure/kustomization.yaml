@@ -11,4 +11,5 @@ resources:
   - local-path-provisioner.yaml
   - postgresql.yaml
   - zitadel.yaml
+  - ./plattform
   - registry.yaml
