@@ -24,11 +24,6 @@ spec:
       retries: 0
       remediateLastFailure: true
       strategy: uninstall
-  valuesFrom:
-    - kind: Secret
-      name: zitadel-first-instance
-      valuesKey: values.yaml
-      optional: false
   values:
     zitadel:
       masterkey: "MasterkeyNeedsToHave32Characters"
@@ -37,14 +32,13 @@ spec:
           Org:
             Name: ZITADEL
             Domain: auth.192.168.1.249.sslip.io
-            Human:
-              UserName: zitadel-admin
-              FirstName: ZITADEL
-              LastName: Admin
-              Email:
-                Address: zitadel-admin@zitadel.localhost
-                IsEmailVerified: true
-              PasswordChangeRequired: false
+            Machine:
+              Machine:
+                Username: zitadel-admin-sa
+                Name: Admin SA
+              MachineKey:
+                ExpirationDate: "2030-01-01T00:00:00Z"
+                Type: 1
         ExternalDomain: auth.192.168.1.249.sslip.io
         ExternalPort: 443
         ExternalSecure: true

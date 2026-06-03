@@ -6,3 +6,4 @@ resources:
   - helmrelease-zitadel.yaml
   - certificate.yaml
   - ingress.yaml
+  - zitadel-init.yaml
