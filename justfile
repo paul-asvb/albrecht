@@ -115,6 +115,26 @@ flux-reconcile:
 flux-uninstall:
     @KUBECONFIG={{kubeconfig}} flux uninstall --silent
 
+# Wait until k0s is running and all kube-system pods are Ready
+wait-healthy:
+    @echo "Waiting for k0s to report Running..."
+    @until sudo k0s status 2>/dev/null | grep -q "Running"; do sleep 2; done
+    @echo "k0s is running."
+    @echo "Waiting for k0s API server (kubeconfig) to be ready..."
+    @until sudo k0s kubeconfig admin > {{kubeconfig}} 2>/dev/null; do sleep 2; done
+    @echo "API server is up."
+    @echo "Waiting for kube-system pods to be ready..."
+    @KUBECONFIG={{kubeconfig}} kubectl wait pod \
+        --all --namespace kube-system \
+        --for=condition=Ready \
+        --timeout=300s
+    @echo "Cluster is healthy."
+
+# Destroy the k0s cluster and re-run Flux bootstrap from scratch
+reset:
+    @sudo -n true 2>/dev/null || (echo "Error: passwordless sudo required — run 'sudo -v' first"; exit 1)
+    @just down start wait-healthy flux-bootstrap
+
 # Set up the hello-knative demo from zero: cluster → Flux → wait for ready
 # Prerequisites: gh CLI authenticated
 bootstrap: env-github-token
