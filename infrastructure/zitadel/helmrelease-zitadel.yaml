@@ -67,6 +67,10 @@ spec:
               Password: "zitadel123"
             Admin:
               Password: "postgres123"
+    setupJob:
+      machinekeyWriter:
+        image:
+          tag: "1.30"
     postgresql:
       enabled: false
     replicaCount: 1
