@@ -70,7 +70,8 @@ spec:
     setupJob:
       machinekeyWriter:
         image:
-          tag: "1.30"
+          repository: alpine/k8s
+          tag: "1.30.4"
     postgresql:
       enabled: false
     replicaCount: 1
