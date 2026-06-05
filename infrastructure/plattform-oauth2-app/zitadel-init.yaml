@@ -13,6 +13,7 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "create", "update", "patch"]
+    resourceNames: ["plattform-init-key", "oauth2-proxy"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -28,30 +29,41 @@ roleRef:
   name: zitadel-init
   apiGroup: rbac.authorization.k8s.io
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+apiVersion: v1
+kind: Secret
 metadata:
-  name: zitadel-init-machinekey
-  namespace: zitadel
-rules:
-  - apiGroups: [""]
-    resources: ["secrets"]
-    resourceNames: ["zitadel-machine-key"]
-    verbs: ["get"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: zitadel-init-machinekey
-  namespace: zitadel
-subjects:
-  - kind: ServiceAccount
-    name: zitadel-init
-    namespace: default
-roleRef:
-  kind: Role
-  name: zitadel-init-machinekey
-  apiGroup: rbac.authorization.k8s.io
+  name: plattform-init-key
+  namespace: default
+stringData:
+  private.pem: |
+    -----BEGIN PRIVATE KEY-----
+    MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDOl7NCmvZLZKKI
+    mZrsO0B9ZrGt8zlpd2HPmNF6eQyRKvyEoCaM5fAfQHUgWmS8xKIqA1gFaxy8FOYz
+    u5cG3UBvqIKNlNFsm2QWgpeT54MmJt7uAk8b3wJcjQAH8VLRdkSUc5AxQjAswX5K
+    HDt4hAeOgbMuV/3UwuwutmKCcCCITb83bURZVJznhh5Wn7o4AvdIj+hxB+PzFWum
+    q9Wg1Rbn25t2P3lPMNC7KaTaIUoVvy2DKZDCqScce1MfrBjJD/Y+v15sHAWiqp8f
+    qDpBBXuUpFePH1HSNVFWjpOsnWKrJ/parJj7TGAKFOZeGj+YAeD8SW4i5swgQrIY
+    naGd8p5HAgMBAAECggEANp62/0IXIgG+Ux1Bb3mO6FixW0s1/6NXkdpWb+n3H55c
+    2ve4mYHlhW22SdJ8VcgrE66EpBIYq8Vew4iyOldexOapdaNF51ACG011o94Ot5SJ
+    ViX4ImdIqY2B15e/DLAXG6SeF9fnAr45lIB4XLmTgeLaq8MJ0imi5grEarYYc9CY
+    iyd97Wxhn89YHYorOzSAeS9L4WLMtqWn5NWrxBgBvmoffe6VvnRjWldGhQNrFMm/
+    Ay7+40+sg7ji0WYG8DPHg0G+5StFu/jZ3P5lX2D61UGaDIP/Vhuvtc2QDfb0gY7+
+    PwxBG9SlKQZ28f/J1ILhXcDfMfHKewtT22jKFXA2oQKBgQD0hzUqReVEJ4UHvUri
+    TbYs1wHZeWM8s9QaMI00iqjQq9lgYJIoP3hi01pzrndRmXCnbYtCWZQJLY4V8RoS
+    tBGgxBXgZhIsC+LE4M1BYA6AumBTtAVxTuUpvpqcWFJJ37fZKpYAYKFeOfXf3DQc
+    +oTRwtni0Mywtck56Z9I0RYV1wKBgQDYSOKGp+pYQnb2HHtKVtadAF6wppvrh2Ei
+    gBlUv+R42JeaivEuahC5sEbpt1geKGd3XrVWwOyT8ntCb/6oGOIl60kGx2B107tt
+    8yV14B4OP4oSZHIChce2sYJSYKURQIUCUrKkt9Y1TrNzp9CJh+Rssa7TIMybniiy
+    seqweDLNEQKBgF84+9Ifb91vilVuOGgSHRwvCjBXHfb4jGM6fvJ0ALNqCHeIg8Ia
+    nVXWukWMLjjfiMgaV32aBpTgYZFX13BrIOY7Fc3R0cfHRSKn7CZGMr+cVICj/O6X
+    65Oq/uhdWIYeEakG9WzmNFDOP1pSlRSn1esddt3ls6Ao2lisCnQ/v9r3AoGBAILD
+    dimhhd68uH3N9ICahgDAQ3+cC7LX09NvDWGe7vxdPzORg4XjXJ9Xw1f0oJMDLKMQ
+    IKUF2UMNnJYrbhSljr0MRseRbXFvhOdR1TkyOhm1Mr4x+ngp9/gt1DQH+GS41HH2
+    G8nY1+q83WQ0drFf9qv8tU0yjGIduk9noBP3aAdxAoGAS0vW73pZc1kbvVHkdcjE
+    ItztrzxurxVwMeGW1ip20KzMTLWnz13NuESni8DjM0FeW+0znhEFDJpv1fC/nRtG
+    wJqwQEYu/nsRz8gi8IlCnX3zkvkf/77JiyrbWhTOJXebGZqFmietSod8/ALVsosF
+    tMDaQ3rqxPPeq5FFipvE25Q=
+    -----END PRIVATE KEY-----
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -110,26 +122,26 @@ data:
       return request(`${ZURL}${path}`, { method, headers, body });
     }
 
-    function buildJwt(userId, keyId, privateKeyPem) {
+    function buildJwt(subject, privateKeyPem) {
       const now = Math.floor(Date.now() / 1000);
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', kid: keyId })).toString('base64url');
+      const header = Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url');
       const payload = Buffer.from(JSON.stringify({
-        iss: userId, sub: userId, aud: ZURL, iat: now, exp: now + 3600,
+        iss: subject, sub: subject, aud: ZURL, iat: now, exp: now + 3600,
       })).toString('base64url');
       const signing = `${header}.${payload}`;
       const sig = crypto.createSign('RSA-SHA256').update(signing).sign(privateKeyPem, 'base64url');
       return `${signing}.${sig}`;
     }
 
-    async function getAccessToken(keyJson) {
-      const jwt = buildJwt(keyJson.userId, keyJson.keyId, keyJson.key);
+    async function getAccessToken(privateKeyPem) {
+      const jwt = buildJwt('plattform-init', privateKeyPem);
       const { data } = await request(`${ZURL}/oauth/v2/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
           assertion: jwt,
-          scope: 'openid urn:zitadel:iam:org:project:id:zitadel:aud',
+          scope: 'openid urn:zitadel:iam:system:domain:instance:auth.192.168.1.249.sslip.io',
         }).toString(),
       });
       if (!data.access_token) throw new Error(`Token exchange failed: ${JSON.stringify(data)}`);
@@ -190,12 +202,11 @@ data:
         return;
       }
 
-      const { status: mkStatus, data: machineKeySecret } = await k8s('GET', '/api/v1/namespaces/zitadel/secrets/zitadel-machine-key');
-      if (mkStatus !== 200) throw new Error(`Failed to read machine key secret (${mkStatus}): ${JSON.stringify(machineKeySecret)}`);
-      if (!machineKeySecret.data?.['sa.json']) throw new Error(`Machine key secret has no sa.json field: ${JSON.stringify(machineKeySecret.data)}`);
-      const keyJson = JSON.parse(Buffer.from(machineKeySecret.data['sa.json'], 'base64').toString());
+      const { status: pkStatus, data: pkSecret } = await k8s('GET', `/api/v1/namespaces/${NS}/secrets/plattform-init-key`);
+      if (pkStatus !== 200) throw new Error(`Failed to read private key secret (${pkStatus}): ${JSON.stringify(pkSecret)}`);
+      const privateKeyPem = Buffer.from(pkSecret.data['private.pem'], 'base64').toString();
 
-      const token = await getAccessToken(keyJson);
+      const token = await getAccessToken(privateKeyPem);
       const projectId = await findOrCreateProject(token, 'plattform');
       const { clientId, clientSecret } = await findOrCreateApp(token, projectId, 'plattform');
       const cookieSecret = crypto.randomBytes(32).toString('base64');
