@@ -59,125 +59,162 @@ metadata:
   name: zitadel-init-script
   namespace: default
 data:
-  init.sh: |
-    #!/bin/sh
-    set -e
+  init.js: |
+    #!/usr/bin/env node
+    'use strict';
 
-    ZURL="https://auth.192.168.1.249.sslip.io"
-    NS="default"
+    // Zitadel uses a self-signed cert on the local cluster, same as curl -sk
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-    # Idempotency: skip if secret already has credentials
-    if kubectl get secret oauth2-proxy -n "$NS" -o jsonpath='{.data.client-id}' 2>/dev/null \
-        | base64 -d 2>/dev/null | grep -q .; then
-      echo "oauth2-proxy secret already populated, nothing to do"
-      exit 0
-    fi
+    const fs = require('fs');
+    const crypto = require('crypto');
+    const https = require('https');
 
-    # Read machine key written by the Zitadel chart on first install
-    KEY_JSON=$(kubectl get secret -n zitadel zitadel-machine-key -o jsonpath='{.data.sa\.json}' | base64 -d)
-    USER_ID=$(echo "$KEY_JSON" | jq -r '.userId')
-    KEY_ID=$(echo "$KEY_JSON" | jq -r '.keyId')
+    const ZURL = 'https://auth.192.168.1.249.sslip.io';
+    const NS = 'default';
+    const K8S_API = `https://${process.env.KUBERNETES_SERVICE_HOST}:${process.env.KUBERNETES_SERVICE_PORT || 443}`;
+    const SA_TOKEN = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();
 
-    TMPKEY=$(mktemp)
-    trap 'rm -f "$TMPKEY"' EXIT
-    echo "$KEY_JSON" | jq -r '.key' > "$TMPKEY"
+    function request(url, { method = 'GET', headers = {}, body } = {}) {
+      return new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const req = https.request(
+          { hostname: u.hostname, port: u.port || 443, path: u.pathname + u.search, method, headers },
+          res => {
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => {
+              const text = Buffer.concat(chunks).toString();
+              try { resolve({ status: res.statusCode, data: JSON.parse(text) }); }
+              catch { resolve({ status: res.statusCode, data: text }); }
+            });
+          }
+        );
+        req.on('error', reject);
+        if (body) req.write(typeof body === 'string' ? body : JSON.stringify(body));
+        req.end();
+      });
+    }
 
-    # Build a JWT (RS256) for the JWT bearer grant
-    NOW=$(date +%s)
-    EXP=$((NOW + 3600))
-    HEADER=$(printf '{"alg":"RS256","kid":"%s"}' "$KEY_ID" | base64 | tr '+/' '-_' | tr -d '=\n')
-    PAYLOAD=$(printf '{"iss":"%s","sub":"%s","aud":"%s","iat":%d,"exp":%d}' \
-      "$USER_ID" "$USER_ID" "$ZURL" "$NOW" "$EXP" | base64 | tr '+/' '-_' | tr -d '=\n')
-    SIGNING_INPUT="${HEADER}.${PAYLOAD}"
-    SIGNATURE=$(printf '%s' "$SIGNING_INPUT" | openssl dgst -sha256 -sign "$TMPKEY" -binary | base64 | tr '+/' '-_' | tr -d '=\n')
-    JWT="${SIGNING_INPUT}.${SIGNATURE}"
+    function k8s(method, path, body) {
+      return request(`${K8S_API}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${SA_TOKEN}`, 'Content-Type': 'application/json' },
+        body,
+      });
+    }
 
-    # Exchange JWT for an access token
-    TOKEN=$(curl -sk -X POST "$ZURL/oauth/v2/token" \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
-      --data-urlencode "assertion=$JWT" \
-      --data-urlencode "scope=openid urn:zitadel:iam:org:project:id:zitadel:aud" \
-      | jq -r '.access_token // empty')
+    function zitadel(method, path, body, token) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return request(`${ZURL}${path}`, { method, headers, body });
+    }
 
-    if [ -z "$TOKEN" ]; then
-      echo "Token exchange failed"
-      exit 1
-    fi
-    echo "Got access token"
+    function buildJwt(userId, keyId, privateKeyPem) {
+      const now = Math.floor(Date.now() / 1000);
+      const header = Buffer.from(JSON.stringify({ alg: 'RS256', kid: keyId })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({
+        iss: userId, sub: userId, aud: ZURL, iat: now, exp: now + 3600,
+      })).toString('base64url');
+      const signing = `${header}.${payload}`;
+      const sig = crypto.createSign('RSA-SHA256').update(signing).sign(privateKeyPem, 'base64url');
+      return `${signing}.${sig}`;
+    }
 
-    AUTH="Authorization: Bearer $TOKEN"
+    async function getAccessToken(keyJson) {
+      const jwt = buildJwt(keyJson.userId, keyJson.keyId, keyJson.key);
+      const { data } = await request(`${ZURL}/oauth/v2/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+          assertion: jwt,
+          scope: 'openid urn:zitadel:iam:org:project:id:zitadel:aud',
+        }).toString(),
+      });
+      if (!data.access_token) throw new Error(`Token exchange failed: ${JSON.stringify(data)}`);
+      console.log('Got access token');
+      return data.access_token;
+    }
 
-    # Find or create project "plattform"
-    PROJECT_ID=$(curl -sk -X POST "$ZURL/management/v1/projects/_search" \
-      -H "$AUTH" -H "Content-Type: application/json" \
-      -d '{"query":{"limit":100}}' \
-      | jq -r '.result[]? | select(.name=="plattform") | .id' | head -1)
+    async function findOrCreateProject(token, name) {
+      const { data } = await zitadel('POST', '/management/v1/projects/_search', { query: { limit: 100 } }, token);
+      const existing = (data.result || []).find(p => p.name === name);
+      if (existing) { console.log(`Found project: ${existing.id}`); return existing.id; }
+      const { data: created } = await zitadel('POST', '/management/v1/projects', { name }, token);
+      if (!created.id) throw new Error(`Project creation failed: ${JSON.stringify(created)}`);
+      console.log(`Created project: ${created.id}`);
+      return created.id;
+    }
 
-    if [ -z "$PROJECT_ID" ]; then
-      PROJECT_ID=$(curl -sk -X POST "$ZURL/management/v1/projects" \
-        -H "$AUTH" -H "Content-Type: application/json" \
-        -d '{"name":"plattform"}' | jq -r '.id')
-      echo "Created project: $PROJECT_ID"
-    else
-      echo "Found project: $PROJECT_ID"
-    fi
+    async function findOrCreateApp(token, projectId, name) {
+      const { data } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/_search`, { query: { limit: 100 } }, token);
+      const existing = (data.result || []).find(a => a.name === name);
+      if (existing) {
+        console.log(`App exists (${existing.id}), resetting client secret`);
+        const { data: reset } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/${existing.id}/oidc_config/_reset_client_secret`, {}, token);
+        if (!reset.clientId) throw new Error(`Client secret reset failed: ${JSON.stringify(reset)}`);
+        return { clientId: reset.clientId, clientSecret: reset.clientSecret };
+      }
+      const { data: created } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/oidc`, {
+        name,
+        redirectUris: ['https://plattform.default.192.168.1.249.sslip.io/oauth2/callback'],
+        responseTypes: ['OIDC_RESPONSE_TYPE_CODE'],
+        grantTypes: ['OIDC_GRANT_TYPE_AUTHORIZATION_CODE', 'OIDC_GRANT_TYPE_REFRESH_TOKEN'],
+        appType: 'OIDC_APP_TYPE_WEB',
+        authMethodType: 'OIDC_AUTH_METHOD_TYPE_BASIC',
+        postLogoutRedirectUris: ['https://plattform.default.192.168.1.249.sslip.io'],
+        version: 'OIDC_VERSION_1_0',
+        accessTokenType: 'OIDC_TOKEN_TYPE_BEARER',
+      }, token);
+      if (!created.clientId) throw new Error(`App creation failed: ${JSON.stringify(created)}`);
+      console.log(`Created OIDC app: ${created.clientId}`);
+      return { clientId: created.clientId, clientSecret: created.clientSecret };
+    }
 
-    # Find or create OIDC app "plattform"
-    APPS=$(curl -sk -X POST "$ZURL/management/v1/projects/$PROJECT_ID/apps/_search" \
-      -H "$AUTH" -H "Content-Type: application/json" \
-      -d '{"query":{"limit":100}}')
-    APP_ID=$(echo "$APPS" | jq -r '.result[]? | select(.name=="plattform") | .id' | head -1)
+    async function applySecret(name, namespace, stringData) {
+      const { status, data: existing } = await k8s('GET', `/api/v1/namespaces/${namespace}/secrets/${name}`);
+      const secret = { apiVersion: 'v1', kind: 'Secret', metadata: { name, namespace }, stringData };
+      if (status === 404) {
+        await k8s('POST', `/api/v1/namespaces/${namespace}/secrets`, secret);
+      } else {
+        secret.metadata.resourceVersion = existing.metadata.resourceVersion;
+        await k8s('PUT', `/api/v1/namespaces/${namespace}/secrets/${name}`, secret);
+      }
+    }
 
-    if [ -z "$APP_ID" ]; then
-      CREATED=$(curl -sk -X POST "$ZURL/management/v1/projects/$PROJECT_ID/apps/oidc" \
-        -H "$AUTH" -H "Content-Type: application/json" \
-        -d '{
-          "name":"plattform",
-          "redirectUris":["https://plattform.default.192.168.1.249.sslip.io/oauth2/callback"],
-          "responseTypes":["OIDC_RESPONSE_TYPE_CODE"],
-          "grantTypes":["OIDC_GRANT_TYPE_AUTHORIZATION_CODE","OIDC_GRANT_TYPE_REFRESH_TOKEN"],
-          "appType":"OIDC_APP_TYPE_WEB",
-          "authMethodType":"OIDC_AUTH_METHOD_TYPE_BASIC",
-          "postLogoutRedirectUris":["https://plattform.default.192.168.1.249.sslip.io"],
-          "version":"OIDC_VERSION_1_0",
-          "accessTokenType":"OIDC_TOKEN_TYPE_BEARER"
-        }')
-      CLIENT_ID=$(echo "$CREATED" | jq -r '.clientId // empty')
-      CLIENT_SECRET=$(echo "$CREATED" | jq -r '.clientSecret // empty')
-      if [ -z "$CLIENT_ID" ]; then
-        echo "App creation failed: $CREATED"
-        exit 1
-      fi
-      echo "Created OIDC app: $CLIENT_ID"
-    else
-      # App exists but oauth2-proxy secret is missing — reset the client secret
-      echo "App exists ($APP_ID), resetting client secret"
-      RESET=$(curl -sk -X POST \
-        "$ZURL/management/v1/projects/$PROJECT_ID/apps/$APP_ID/oidc_config/_reset_client_secret" \
-        -H "$AUTH" -H "Content-Type: application/json")
-      CLIENT_ID=$(echo "$RESET" | jq -r '.clientId // empty')
-      CLIENT_SECRET=$(echo "$RESET" | jq -r '.clientSecret // empty')
-      if [ -z "$CLIENT_ID" ]; then
-        echo "Client secret reset failed: $RESET"
-        exit 1
-      fi
-    fi
+    async function main() {
+      const { status, data: existing } = await k8s('GET', `/api/v1/namespaces/${NS}/secrets/oauth2-proxy`);
+      if (status === 200 && existing?.data?.['client-id']) {
+        console.log('oauth2-proxy secret already populated, nothing to do');
+        return;
+      }
 
-    COOKIE_SECRET=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d '\n')
+      const { status: mkStatus, data: machineKeySecret } = await k8s('GET', '/api/v1/namespaces/zitadel/secrets/zitadel-machine-key');
+      if (mkStatus !== 200) throw new Error(`Failed to read machine key secret (${mkStatus}): ${JSON.stringify(machineKeySecret)}`);
+      if (!machineKeySecret.data?.['sa.json']) throw new Error(`Machine key secret has no sa.json field: ${JSON.stringify(machineKeySecret.data)}`);
+      const keyJson = JSON.parse(Buffer.from(machineKeySecret.data['sa.json'], 'base64').toString());
 
-    kubectl create secret generic oauth2-proxy -n "$NS" \
-      --from-literal=client-id="$CLIENT_ID" \
-      --from-literal=client-secret="$CLIENT_SECRET" \
-      --from-literal=cookie-secret="$COOKIE_SECRET" \
-      --dry-run=client -o yaml | kubectl apply -f -
+      const token = await getAccessToken(keyJson);
+      const projectId = await findOrCreateProject(token, 'plattform');
+      const { clientId, clientSecret } = await findOrCreateApp(token, projectId, 'plattform');
+      const cookieSecret = crypto.randomBytes(32).toString('base64');
 
-    echo "✓ oauth2-proxy secret written"
+      await applySecret('oauth2-proxy', NS, {
+        'client-id': clientId,
+        'client-secret': clientSecret,
+        'cookie-secret': cookieSecret,
+      });
+
+      console.log('✓ oauth2-proxy secret written');
+    }
+
+    main().catch(err => { console.error(err.message || err); process.exit(1); });
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: zitadel-init
+  name: zitadel-init-plattform-oauth
   namespace: default
 spec:
   backoffLimit: 3
@@ -187,8 +224,8 @@ spec:
       restartPolicy: Never
       containers:
         - name: init
-          image: alpine/k8s:1.30.4
-          command: ["/bin/sh", "/scripts/init.sh"]
+          image: node:20-alpine
+          command: ["node", "/scripts/init.js"]
           volumeMounts:
             - name: script
               mountPath: /scripts
