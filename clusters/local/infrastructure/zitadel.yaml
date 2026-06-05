@@ -7,7 +7,7 @@ spec:
   dependsOn:
     - name: cert-manager-config
     - name: knative-serving
-    - name: postgresql
+    - name: zitadel-postgres
   interval: 10m
   timeout: 15m
   retryInterval: 2m

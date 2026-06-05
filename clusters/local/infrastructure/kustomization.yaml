@@ -9,6 +9,6 @@ resources:
   - crossplane-providers.yaml
   - crossplane-config.yaml
   - local-path-provisioner.yaml
-  - postgresql.yaml
+  - zitadel-postgres.yaml
   - zitadel.yaml
   - registry.yaml
