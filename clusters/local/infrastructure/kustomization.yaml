@@ -9,7 +9,7 @@ resources:
   - crossplane-providers.yaml
   - crossplane-config.yaml
   - local-path-provisioner.yaml
-# - zitadel-postgres.yaml
-#  - zitadel.yaml
-#  - plattform-oauth2-app.yaml
+  - zitadel-postgres.yaml
+  - zitadel.yaml
+  - plattform-oauth2-app.yaml
   - registry.yaml
