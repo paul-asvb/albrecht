@@ -188,7 +188,7 @@ metadata:
   name: plattform-oauth-app-init
   namespace: default
 spec:
-  backoffLimit: 3
+  backoffLimit: 1
   template:
     spec:
       serviceAccountName: plattform-oauth-app-init
