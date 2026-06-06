@@ -28,22 +28,17 @@ spec:
     zitadel:
       masterkey: "MasterkeyNeedsToHave32Characters"
       configmapConfig:
-        SystemAPIUsers:
-          plattform-init:
-            KeyData: |
-              -----BEGIN PUBLIC KEY-----
-              MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzpezQpr2S2SiiJma7DtA
-              fWaxrfM5aXdhz5jRenkMkSr8hKAmjOXwH0B1IFpkvMSiKgNYBWscvBTmM7uXBt1A
-              b6iCjZTRbJtkFoKXk+eDJibe7gJPG98CXI0AB/FS0XZElHOQMUIwLMF+Shw7eIQH
-              joGzLlf91MLsLrZignAgiE2/N21EWVSc54YeVp+6OAL3SI/ocQfj8xVrpqvVoNUW
-              59ubdj95TzDQuymk2iFKFb8tgymQwqknHHtTH6wYyQ/2Pr9ebBwFoqqfH6g6QQV7
-              lKRXjx9R0jVRVo6TrJ1iqyf6WqyY+0xgChTmXho/mAHg/EluIubMIEKyGJ2hnfKe
-              RwIDAQAB
-              -----END PUBLIC KEY-----
         FirstInstance:
           Org:
-            Name: ZITADEL
-            Domain: auth.192.168.1.249.sslip.io
+            Name: plattform 
+            Domain: auth.192.168.1.249.sslip.io    
+            Machine:
+              Machine:
+                Username: zitadel-admin-sa
+                Name: Admin
+              MachineKey:
+                ExpirationDate: "2029-01-01T00:00:00Z"
+                Type: 1
         ExternalDomain: auth.192.168.1.249.sslip.io
         ExternalPort: 443
         ExternalSecure: true
