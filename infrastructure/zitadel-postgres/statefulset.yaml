@@ -6,6 +6,8 @@ metadata:
 spec:
   serviceName: zitadel-postgresql-hl
   replicas: 1
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Delete
   selector:
     matchLabels:
       app.kubernetes.io/name: postgresql
