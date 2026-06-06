@@ -16,6 +16,12 @@ spec:
       visibility: ExternalIP
       http:
         paths:
+          - path: /ui/v2/login
+            splits:
+              - serviceName: zitadel-zitadel-login
+                serviceNamespace: zitadel
+                servicePort: 3000
+                percent: 100
           - splits:
               - serviceName: zitadel-zitadel
                 serviceNamespace: zitadel
