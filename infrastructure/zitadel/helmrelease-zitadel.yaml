@@ -31,7 +31,14 @@ spec:
         FirstInstance:
           Org:
             Name: plattform 
-            Domain: auth.192.168.1.249.sslip.io    
+            Domain: auth.192.168.1.249.sslip.io
+            Human:
+              UserName: "admin"
+              Password: "SecurePassword123!"
+              FirstName: "Zitadel"
+              LastName: "Admin"
+              Email: "admin@zitadel.example.com"
+              PasswordChangeRequired: false 
             Machine:
               Machine:
                 Username: zitadel-admin-sa

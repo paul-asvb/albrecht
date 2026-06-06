@@ -12,7 +12,10 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "create", "update", "patch"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "update", "patch"]
     resourceNames: ["oauth2-proxy"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -122,7 +125,7 @@ data:
 
     async function findOrCreateApp(token, projectId, name) {
       const { data } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/_search`, { query: { limit: 100 } }, token);
-      const existing = (data.result || []).find(a => a.name === name);
+      const existing = (data.result || []).find(a => a.name === name && a.oidcConfig);
       if (existing) {
         console.log(`App exists (${existing.id}), resetting client secret`);
         const { data: reset } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/${existing.id}/oidc_config/_reset_client_secret`, {}, token);
@@ -148,11 +151,15 @@ data:
     async function applySecret(name, namespace, stringData) {
       const { status, data: existing } = await k8s('GET', `/api/v1/namespaces/${namespace}/secrets/${name}`);
       const secret = { apiVersion: 'v1', kind: 'Secret', metadata: { name, namespace }, stringData };
+      let result;
       if (status === 404) {
-        await k8s('POST', `/api/v1/namespaces/${namespace}/secrets`, secret);
+        result = await k8s('POST', `/api/v1/namespaces/${namespace}/secrets`, secret);
       } else {
         secret.metadata.resourceVersion = existing.metadata.resourceVersion;
-        await k8s('PUT', `/api/v1/namespaces/${namespace}/secrets/${name}`, secret);
+        result = await k8s('PUT', `/api/v1/namespaces/${namespace}/secrets/${name}`, secret);
+      }
+      if (result.status < 200 || result.status > 299) {
+        throw new Error(`Failed to write secret ${name} (${result.status}): ${JSON.stringify(result.data)}`);
       }
     }
 
