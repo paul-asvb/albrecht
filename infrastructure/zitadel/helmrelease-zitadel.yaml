@@ -31,13 +31,13 @@ spec:
         FirstInstance:
           Org:
             Name: plattform
-            # Human:
-            #   UserName: "paul"
-            #   Password: "SecurePassword123!"
-            #   FirstName: "Paul"
-            #   LastName: "Admin"
-            #   Email: "admin@zitadel.example.com"
-            #   PasswordChangeRequired: false
+            Human:
+              UserName: "paul"
+              Password: "SecurePassword123!"
+              FirstName: "Paul"
+              LastName: "Admin"
+              Email: "admin@zitadel.example.com"
+              PasswordChangeRequired: false
             Machine:
               Machine:
                 Username: zitadel-admin-sa
