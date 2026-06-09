@@ -31,20 +31,20 @@ spec:
         FirstInstance:
           Org:
             Name: plattform
-            Human:
-              UserName: "paul"
-              Password: "SecurePassword123!"
-              FirstName: "Paul"
-              LastName: "Admin"
-              Email: "admin@zitadel.example.com"
-              PasswordChangeRequired: false
-            # Machine:
-            #   Machine:
-            #     Username: zitadel-admin-sa
-            #     Name: Admin
-            #   MachineKey:
-            #     ExpirationDate: "2029-01-01T00:00:00Z"
-            #     Type: 2
+            # Human:
+            #   UserName: "paul"
+            #   Password: "SecurePassword123!"
+            #   FirstName: "Paul"
+            #   LastName: "Admin"
+            #   Email: "admin@zitadel.example.com"
+            #   PasswordChangeRequired: false
+            Machine:
+              Machine:
+                Username: zitadel-admin-sa
+                Name: Admin
+              MachineKey:
+                ExpirationDate: "2029-01-01T00:00:00Z"
+                Type: 2
         ExternalDomain: auth.192.168.1.249.sslip.io
         ExternalPort: 443
         ExternalSecure: true
