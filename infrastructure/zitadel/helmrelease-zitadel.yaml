@@ -32,16 +32,16 @@ spec:
           Org:
             Name: plattform
             Human:
-              UserName: "paul"
+              UserName: "plattform-admin"
               Password: "SecurePassword123!"
-              FirstName: "Paul"
-              LastName: "Admin"
-              Email: "admin@zitadel.example.com"
+              FirstName: "plattform"
+              LastName: "admin"
+              Email: "admin@plattform.none"
               PasswordChangeRequired: false
             Machine:
               Machine:
                 Username: zitadel-admin-sa
-                Name: Admin
+                Name: plattform-mashine-admin
               MachineKey:
                 ExpirationDate: "2029-01-01T00:00:00Z"
                 Type: 1
