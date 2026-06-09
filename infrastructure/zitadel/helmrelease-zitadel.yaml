@@ -30,15 +30,15 @@ spec:
       configmapConfig:
         FirstInstance:
           Org:
-            Name: plattform 
+            Name: plattform
             Domain: auth.192.168.1.249.sslip.io
             Human:
-              UserName: "admin"
+              UserName: "paul"
               Password: "SecurePassword123!"
-              FirstName: "Zitadel"
+              FirstName: "Paul"
               LastName: "Admin"
               Email: "admin@zitadel.example.com"
-              PasswordChangeRequired: false 
+              PasswordChangeRequired: false
             Machine:
               Machine:
                 Username: zitadel-admin-sa
