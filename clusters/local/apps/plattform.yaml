@@ -1,0 +1,16 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: plattform
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: knative-serving
+    - name: plattform-oauth2-app
+  interval: 10m
+  timeout: 5m
+  path: ./apps/plattform
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
