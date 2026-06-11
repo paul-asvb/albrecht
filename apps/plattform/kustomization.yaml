@@ -3,5 +3,3 @@ kind: Kustomization
 resources:
   - ksvc.yaml
   - oauth2-proxy.yaml
-  - oauth2-proxy-certificate.yaml
-  - oauth2-proxy-ingress.yaml
