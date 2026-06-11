@@ -11,5 +11,5 @@ resources:
   - local-path-provisioner.yaml
   - zitadel-postgres.yaml
   - zitadel.yaml
-  - plattform-oauth2-app.yaml
+  # - plattform-oauth2-app.yaml
   - registry.yaml
