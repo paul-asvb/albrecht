@@ -113,9 +113,13 @@ data:
       return request(`${ZURL}${path}`, { method, headers, body });
     }
 
-    async function findOrCreateProject(token, name) {
+    async function findProject(token, name) {
       const { data } = await zitadel('POST', '/management/v1/projects/_search', { query: { limit: 100 } }, token);
-      const existing = (data.result || []).find(p => p.name === name);
+      return (data.result || []).find(p => p.name === name) || null;
+    }
+
+    async function findOrCreateProject(token, name) {
+      const existing = await findProject(token, name);
       if (existing) { console.log(`Found project: ${existing.id}`); return existing.id; }
       const { data: created } = await zitadel('POST', '/management/v1/projects', { name }, token);
       if (!created.id) throw new Error(`Project creation failed: ${JSON.stringify(created)}`);
@@ -123,9 +127,13 @@ data:
       return created.id;
     }
 
-    async function findOrCreateApp(token, projectId, name) {
+    async function findApp(token, projectId, name) {
       const { data } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/_search`, { query: { limit: 100 } }, token);
-      const existing = (data.result || []).find(a => a.name === name && a.oidcConfig);
+      return (data.result || []).find(a => a.name === name && a.oidcConfig) || null;
+    }
+
+    async function findOrCreateApp(token, projectId, name) {
+      const existing = await findApp(token, projectId, name);
       if (existing) {
         console.log(`App exists (${existing.id}), resetting client secret`);
         const { data: reset } = await zitadel('POST', `/management/v1/projects/${projectId}/apps/${existing.id}/oidc_config/_reset_client_secret`, {}, token);
@@ -165,14 +173,21 @@ data:
 
     async function main() {
       const { status, data: existing } = await k8s('GET', `/api/v1/namespaces/${NS}/secrets/oauth2-proxy`);
-      if (status === 200 && existing?.data?.['client-id']) {
-        console.log('oauth2-proxy secret already populated, nothing to do');
-        return;
-      }
+      const secretReady = status === 200 && existing?.data?.['client-id'];
 
       const { status: patStatus, data: patSecret } = await k8s('GET', '/api/v1/namespaces/zitadel/secrets/zitadel-admin-sa-pat');
       if (patStatus !== 200) throw new Error(`Failed to read PAT secret (${patStatus}): ${JSON.stringify(patSecret)}`);
       const token = Buffer.from(patSecret.data['pat'], 'base64').toString().trim();
+
+      if (secretReady) {
+        const project = await findProject(token, 'plattform');
+        const app = project ? await findApp(token, project.id, 'plattform') : null;
+        if (project && app) {
+          console.log('oauth2-proxy secret, project and app already present, nothing to do');
+          return;
+        }
+        console.log(`Secret present but ${!project ? 'project' : 'app'} missing, reinitializing`);
+      }
 
       const projectId = await findOrCreateProject(token, 'plattform');
       const { clientId, clientSecret } = await findOrCreateApp(token, projectId, 'plattform');
