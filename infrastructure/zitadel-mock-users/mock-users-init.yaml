@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: zitadel-mock-users-init
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zitadel-mock-users-init
+  namespace: zitadel
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["zitadel-admin-sa-pat"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zitadel-mock-users-init
+  namespace: zitadel
+subjects:
+  - kind: ServiceAccount
+    name: zitadel-mock-users-init
+    namespace: default
+roleRef:
+  kind: Role
+  name: zitadel-mock-users-init
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zitadel-mock-users-init-script
+  namespace: default
+data:
+  init.js: |
+    #!/usr/bin/env node
+    'use strict';
+
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+    const fs = require('fs');
+    const https = require('https');
+
+    const ZURL = 'https://auth.192.168.1.249.sslip.io';
+    const K8S_API = `https://${process.env.KUBERNETES_SERVICE_HOST}:${process.env.KUBERNETES_SERVICE_PORT || 443}`;
+    const SA_TOKEN = fs.readFileSync('/var/run/secrets/kubernetes.io/serviceaccount/token', 'utf8').trim();
+
+    // Three mock users provisioned into the `plattform` org.
+    const USERS = [
+      { userName: 'alice', firstName: 'Alice', lastName: 'Anderson', email: 'alice@plattform.none' },
+      { userName: 'bob',   firstName: 'Bob',   lastName: 'Brown',    email: 'bob@plattform.none' },
+      { userName: 'carol', firstName: 'Carol', lastName: 'Clark',    email: 'carol@plattform.none' },
+    ];
+    const PASSWORD = 'Password1!';
+    const ROLE_KEY = 'user';
+
+    function request(url, { method = 'GET', headers = {}, body } = {}) {
+      return new Promise((resolve, reject) => {
+        const u = new URL(url);
+        const req = https.request(
+          { hostname: u.hostname, port: u.port || 443, path: u.pathname + u.search, method, headers },
+          res => {
+            const chunks = [];
+            res.on('data', c => chunks.push(c));
+            res.on('end', () => {
+              const text = Buffer.concat(chunks).toString();
+              try { resolve({ status: res.statusCode, data: JSON.parse(text) }); }
+              catch { resolve({ status: res.statusCode, data: text }); }
+            });
+          }
+        );
+        req.on('error', reject);
+        if (body) req.write(typeof body === 'string' ? body : JSON.stringify(body));
+        req.end();
+      });
+    }
+
+    function k8s(method, path, body) {
+      return request(`${K8S_API}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${SA_TOKEN}`, 'Content-Type': 'application/json' },
+        body,
+      });
+    }
+
+    function zitadel(method, path, body, token) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      return request(`${ZURL}${path}`, { method, headers, body });
+    }
+
+    async function findUser(token, userName) {
+      const { data } = await zitadel('POST', '/management/v1/users/_search', {
+        queries: [{ userNameQuery: { userName, method: 'TEXT_QUERY_METHOD_EQUALS_IGNORE_CASE' } }],
+      }, token);
+      return (data.result || [])[0] || null;
+    }
+
+    async function findProject(token, name) {
+      const { data } = await zitadel('POST', '/management/v1/projects/_search', { query: { limit: 100 } }, token);
+      return (data.result || []).find(p => p.name === name) || null;
+    }
+
+    async function findOrCreateUser(token, u) {
+      const existing = await findUser(token, u.userName);
+      if (existing) {
+        console.log(`User ${u.userName} already exists: ${existing.id}`);
+        return existing.id;
+      }
+      const { status, data } = await zitadel('POST', '/management/v1/users/human/_import', {
+        userName: u.userName,
+        profile: {
+          firstName: u.firstName,
+          lastName: u.lastName,
+          displayName: `${u.firstName} ${u.lastName}`,
+          preferredLanguage: 'en',
+        },
+        email: { email: u.email, isEmailVerified: true },
+        password: PASSWORD,
+        passwordChangeRequired: false,
+      }, token);
+      if (status < 200 || status > 299 || !data.userId) {
+        throw new Error(`Failed to create user ${u.userName} (${status}): ${JSON.stringify(data)}`);
+      }
+      console.log(`Created user ${u.userName}: ${data.userId}`);
+      return data.userId;
+    }
+
+    async function ensureRole(token, projectId, roleKey) {
+      const { data } = await zitadel('POST', `/management/v1/projects/${projectId}/roles/_search`, { query: { limit: 100 } }, token);
+      if ((data.result || []).some(r => r.key === roleKey)) {
+        console.log(`Project role "${roleKey}" already present`);
+        return;
+      }
+      const { status, data: created } = await zitadel('POST', `/management/v1/projects/${projectId}/roles`, {
+        roleKey,
+        displayName: 'User',
+      }, token);
+      if (status < 200 || status > 299) {
+        throw new Error(`Failed to create role "${roleKey}" (${status}): ${JSON.stringify(created)}`);
+      }
+      console.log(`Created project role "${roleKey}"`);
+    }
+
+    async function hasGrant(token, userId, projectId) {
+      const { data } = await zitadel('POST', '/management/v1/users/grants/_search', {
+        queries: [
+          { userIdQuery: { userId } },
+          { projectIdQuery: { projectId } },
+        ],
+      }, token);
+      return (data.result || []).length > 0;
+    }
+
+    // Grant the user access to the project with the "user" role.
+    async function ensureGrant(token, userId, userName, projectId) {
+      if (await hasGrant(token, userId, projectId)) {
+        console.log(`Grant for ${userName} on project already present`);
+        return;
+      }
+      const { status, data } = await zitadel('POST', `/management/v1/users/${userId}/grants`, {
+        projectId,
+        roleKeys: [ROLE_KEY],
+      }, token);
+      if (status < 200 || status > 299 || !data.userGrantId) {
+        throw new Error(`Failed to grant ${userName} (${status}): ${JSON.stringify(data)}`);
+      }
+      console.log(`Granted ${userName} access to project: ${data.userGrantId}`);
+    }
+
+    async function main() {
+      const { status: patStatus, data: patSecret } = await k8s('GET', '/api/v1/namespaces/zitadel/secrets/zitadel-admin-sa-pat');
+      if (patStatus !== 200) throw new Error(`Failed to read PAT secret (${patStatus}): ${JSON.stringify(patSecret)}`);
+      const token = Buffer.from(patSecret.data['pat'], 'base64').toString().trim();
+
+      const project = await findProject(token, 'plattform');
+      if (!project) throw new Error('Project "plattform" not found — is plattform-oauth2-app reconciled?');
+      console.log(`Using project plattform: ${project.id}`);
+
+      await ensureRole(token, project.id, ROLE_KEY);
+
+      for (const u of USERS) {
+        const userId = await findOrCreateUser(token, u);
+        await ensureGrant(token, userId, u.userName, project.id);
+      }
+
+      console.log('✓ mock users provisioned and granted access to plattform');
+    }
+
+    main().catch(err => { console.error(err.message || err); process.exit(1); });
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: zitadel-mock-users-init
+  namespace: default
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: zitadel-mock-users-init
+      restartPolicy: Never
+      containers:
+        - name: init
+          image: node:20-alpine
+          command: ["node", "/scripts/init.js"]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: zitadel-mock-users-init-script
+            defaultMode: 0755
