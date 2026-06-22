@@ -12,7 +12,7 @@ spec:
           args:
             - --provider=oidc
             - --oidc-issuer-url=https://auth.192.168.1.249.sslip.io
-            - --upstream=http://plattform-upstream.default.svc.cluster.local
+            - --upstream=http://plattform-upstream.default
             - --redirect-url=https://plattform.default.192.168.1.249.sslip.io/oauth2/callback
             - --http-address=0.0.0.0:4180
             - --email-domain=*
