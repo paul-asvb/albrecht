@@ -9,17 +9,8 @@ flux_path   := "clusters/local"
 default:
     @just --list
 
-# Install k0s binary (if not present)
-install-k0s:
-    @if ! command -v k0s &>/dev/null; then \
-        echo "Installing k0s..."; \
-        curl -sSLf https://get.k0s.sh | sudo sh; \
-    else \
-        echo "k0s already installed: $(k0s version)"; \
-    fi
-
 # Start the k0s cluster (single-node controller+worker)
-connect: install-k0s
+connect:
     @if sudo k0s status &>/dev/null 2>&1; then \
         echo "k0s is already running"; \
     else \

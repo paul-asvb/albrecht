@@ -23,6 +23,18 @@ A single-node [k0s](https://k0sproject.io/) cluster managed by
 | cert-manager | Issues TLS certs from an in-cluster self-signed CA |
 | Crossplane + provider-kubernetes | Composition-based provisioning (e.g. `CustomerNamespace`) |
 
+### Prerequisites
+
+Install the following tools before bootstrapping:
+
+| Tool | Install |
+|---|---|
+| [k0s](https://k0sproject.io/) | `curl -sSLf https://get.k0s.sh \| sudo sh` |
+| [just](https://github.com/casey/just) | `cargo install just` (or your package manager) |
+| [kubectl](https://kubernetes.io/docs/tasks/tools/) | see upstream docs |
+| [flux](https://fluxcd.io/flux/installation/) | `curl -s https://fluxcd.io/install.sh \| sudo bash` |
+| [gh](https://cli.github.com/) | GitHub CLI, authenticated (`gh auth login`) |
+
 ### Bootstrap
 
 ```sh
