@@ -66,6 +66,11 @@ shell:
 apply file:
     @KUBECONFIG={{kubeconfig}} kubectl apply -f {{file}}
 
+# Re-run after cert-manager rotates the CA (~every 90 days).
+# Trust the cluster CA system-wide + in browsers (removes HTTPS warnings).
+trust-ca:
+    @KUBECONFIG={{kubeconfig}} ./scripts/trust-ca.sh
+
 # Write GITHUB_TOKEN from gh CLI into .env
 env-github-token:
     @gh auth token | xargs -I{} sh -c 'grep -q "^GITHUB_TOKEN=" .env 2>/dev/null && sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN={}/" .env || echo "GITHUB_TOKEN={}" >> .env'

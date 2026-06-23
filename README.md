@@ -60,6 +60,23 @@ just down                 # stop and reset the cluster
 Services deployed via Knative will be reachable at
 `https://<name>.<namespace>.<node-ip>.sslip.io`.
 
+### Trusting the cluster CA
+
+TLS certificates are signed by an in-cluster self-signed CA (`sslip-ca`), so
+browsers and `curl` show warnings like *"Something doesn't look right"* until
+the CA root is trusted locally. Run:
+
+```sh
+just trust-ca
+```
+
+This invokes [`scripts/trust-ca.sh`](scripts/trust-ca.sh), which exports the CA
+root from the `sslip-ca-secret` secret and installs it into the system trust
+store (`/etc/ca-certificates/trust-source/anchors/`) and into the Firefox/Chrome
+NSS stores. Restart the browser afterwards. Re-run it after cert-manager rotates
+the CA (~every 90 days). Requires `sudo` and `nss` (`certutil`) for browser
+trust.
+
 ## Repository layout
 
 ```
@@ -68,6 +85,8 @@ apps/
   customer-namespace-example/    ← example Crossplane claim (do not apply directly)
 clusters/
   local/                         ← Flux-managed manifests for the local cluster
+scripts/
+  trust-ca.sh                    ← install the cluster CA into local trust stores
 infrastructure/
   cert-manager/                  ← cert-manager Helm release
   cert-manager-config/           ← self-signed CA + ClusterIssuers
