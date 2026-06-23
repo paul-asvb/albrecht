@@ -5,6 +5,11 @@ metadata:
   namespace: default
 spec:
   template:
+    metadata:
+      annotations:
+        # Keep the proxy warm so it doesn't cold-start (incl. OIDC discovery)
+        # in front of the upstream and compound activation latency.
+        autoscaling.knative.dev/min-scale: "1"
     spec:
       containers:
         - name: oauth2-proxy

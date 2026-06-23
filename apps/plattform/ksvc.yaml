@@ -7,6 +7,13 @@ metadata:
     networking.knative.dev/visibility: cluster-local
 spec:
   template:
+    metadata:
+      annotations:
+        # Keep at least one instance warm to avoid scale-to-zero cold starts.
+        # A cold start takes ~2.5s; while the activator holds the oauth2-proxy
+        # connection that long, the inbound request gets canceled and the proxy
+        # returns 502 ("context canceled").
+        autoscaling.knative.dev/min-scale: "1"
     spec:
       containers:
         - image: ghcr.io/paul-asvb/albrecht:latest
