@@ -1,7 +1,10 @@
 # k0s cluster config for the albrecht single-node local cluster.
-# Consumed by `just local-up` / `just local-config` (see justfile).
-# Node IP is pinned to 192.168.1.249 to match the *.sslip.io service URLs
-# used across the manifests (see AGENTS.md / README.md).
+# Consumed by the `just k0s` module (see k0s.just).
+#
+# api.address is the Kubernetes API server bind/advertise address — it MUST be
+# a real IP on this host (here 192.168.178.102). This is NOT the same as the
+# *.sslip.io service node IP (192.168.1.249) used by Knative/Kourier ingress in
+# the manifests; that governs how workloads are exposed, not the API server.
 apiVersion: k0s.k0sproject.io/v1beta1
 kind: ClusterConfig
 metadata:
@@ -9,7 +12,7 @@ metadata:
   namespace: kube-system
 spec:
   api:
-    address: 192.168.1.249
+    address: 192.168.178.102
     ca:
       certificatesExpireAfter: 8760h0m0s
       expiresAfter: 87600h0m0s
