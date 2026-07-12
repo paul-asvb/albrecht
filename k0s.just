@@ -8,7 +8,9 @@
 k0s_config := "k0s.yaml"
 data_dir   := "/var/lib/k0s-local"
 sock       := "/run/k0s-local-status.sock"
-kubeconfig := "/tmp/albrecht-local.yaml"
+# Written to the path the top-level justfile, Flux bootstrap, and the MCP
+# server all expect, so `just bootstrap` works against this cluster.
+kubeconfig := "/tmp/volmar.yaml"
 
 # Show available commands
 default:
@@ -47,6 +49,16 @@ status:
     @sudo k0s status --status-socket {{sock}}
     @echo ""
     @KUBECONFIG={{kubeconfig}} kubectl get nodes 2>/dev/null || true
+
+# Health check: k0s running, API reachable, node + kube-system pods Ready
+health:
+    @echo "==> k0s process..."
+    @sudo k0s status --status-socket {{sock}} | grep -q "Running" && echo "  ok: k0s is running" || (echo "  FAIL: k0s is not running"; exit 1)
+    @echo "==> API server / node..."
+    @KUBECONFIG={{kubeconfig}} kubectl wait --for=condition=Ready node --all --timeout=60s
+    @echo "==> kube-system pods..."
+    @KUBECONFIG={{kubeconfig}} kubectl wait pod --all -n kube-system --for=condition=Ready --timeout=120s
+    @echo "==> Cluster is healthy."
 
 # Stop and wipe the isolated cluster
 down:

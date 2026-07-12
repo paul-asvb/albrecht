@@ -3,11 +3,39 @@
 A local Kubernetes cluster setup with Knative Serving, automatic TLS via
 cert-manager (self-signed CA), and Crossplane-managed customer namespaces.
 
-## Local cluster
+## Start the cluster
 
-```bash
-eval $(just kube-env)
+Commands live in two justfiles:
+
+- **`just k0s <cmd>`** — the k0s cluster lifecycle (module in [`k0s.just`](k0s.just),
+  driven by [`k0s.yaml`](k0s.yaml)). Run these first.
+- **`just <cmd>`** — everything else (Flux bootstrap, TLS trust, status) in the
+  top-level [`justfile`](justfile).
+
+Bring up the single-node cluster from `k0s.yaml`:
+
+```sh
+just k0s up            # starts k0s in the FOREGROUND (Ctrl-C to stop)
 ```
+
+Then, in a second terminal, write the kubeconfig and run a health check:
+
+```sh
+just k0s kubeconfig    # writes /tmp/volmar.yaml, prints nodes
+just k0s health        # verifies k0s + node + kube-system pods are Ready
+```
+
+Load the kubeconfig into your shell and deploy the platform with Flux:
+
+```sh
+eval $(just k0s kube-env)   # export KUBECONFIG=/tmp/volmar.yaml
+just bootstrap              # install Flux, reconcile, wait for core components
+```
+
+Tear the cluster down with `just k0s down`. See `just k0s` and `just` for the
+full recipe lists.
+
+## Local cluster
 
 A single-node [k0s](https://k0sproject.io/) cluster managed by
 [Flux CD](https://fluxcd.io/), running Knative Serving with automatic HTTPS for
