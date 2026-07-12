@@ -1,5 +1,14 @@
+# Isolated local k0s cluster lifecycle (k0s.just) — run as: just k0s <command>
+mod k0s
+
 k0s_config  := "k0s.yaml"
 kubeconfig  := "/tmp/volmar.yaml"
+
+# Isolated local cluster: its own data dir + status socket so it never
+# touches a globally installed/running k0s (which uses /var/lib/k0s).
+local_data_dir   := "/var/lib/k0s-local"
+local_sock       := "/run/k0s-local-status.sock"
+local_kubeconfig := "/tmp/albrecht-local.yaml"
 flux_owner  := "paul-asvb"
 flux_repo   := "albrecht"
 flux_branch := "main"
@@ -23,6 +32,34 @@ connect:
     fi
     @just kubeconfig 
 
+
+# Generate a default k0s config into {{k0s_config}} (only if missing)
+local-config:
+    @test -f {{k0s_config}} || k0s config create > {{k0s_config}}
+    @echo "Using config: {{k0s_config}}"
+
+# Start an isolated single-node local k0s cluster from {{k0s_config}}.
+# Runs in the FOREGROUND (Ctrl-C to stop). It uses its own data dir and
+# status socket, so a globally installed/running k0s is left untouched.
+# Get its kubeconfig from another terminal with: just local-kubeconfig
+local-up: local-config
+    @echo "Starting isolated local k0s (data-dir={{local_data_dir}}) from {{k0s_config}}..."
+    sudo k0s controller --single \
+        --config {{k0s_config}} \
+        --data-dir {{local_data_dir}} \
+        --status-socket {{local_sock}}
+
+# Write the isolated local cluster's kubeconfig and verify connection
+local-kubeconfig:
+    @sudo k0s kubeconfig admin --data-dir {{local_data_dir}} | tee {{local_kubeconfig}} > /dev/null
+    @KUBECONFIG={{local_kubeconfig}} kubectl get nodes
+
+# Stop and wipe the isolated local cluster (does not affect global k0s)
+local-down:
+    @sudo k0s stop --status-socket {{local_sock}} 2>/dev/null || true
+    @sudo k0s reset --data-dir {{local_data_dir}} 2>/dev/null || true
+    @rm -f {{local_kubeconfig}}
+    @echo "Local cluster stopped and reset."
 
 # Write k0s kubeconfig to /tmp/volmar.yaml and verify cluster connection
 kubeconfig:
